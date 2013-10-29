@@ -5,7 +5,7 @@ LDTP v2 utils.
 @author: Eitan Isaacson <eitan@ascender.com>
 @author: Nagappan Alagappan <nagappan@gmail.com>
 @copyright: Copyright (c) 2009 Eitan Isaacson
-@copyright: Copyright (c) 2009-12 Nagappan Alagappan
+@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 @license: LGPL
 
 http://ldtp.freedesktop.org
@@ -55,7 +55,7 @@ class LdtpCustomLog(logging.Handler):
     def emit(self, record):
         # Get the message and add to the list
         # Later the list element can be poped out
-        self.log_events.append(u'%s-%s' % (record.levelname, record.getMessage()))
+        self.log_events.append('%s-%s' % (record.levelname, record.getMessage()))
 
 # Add LdtpCustomLog handler
 logging.handlers.LdtpCustomLog = LdtpCustomLog
@@ -175,6 +175,7 @@ class Utils:
         self._custom_logger = _custom_logger
         self._desktop = pyatspi.Registry.getDesktop(0)
         self._ldtp_debug = os.environ.get('LDTP_DEBUG', None)
+        self._ldtp_debug_file = os.environ.get('LDTP_DEBUG_FILE', None)
         # Initialize atspi2 version to False
         self._atspi2_ver = False
         if Utils.cached_apps is None:
@@ -229,7 +230,7 @@ class Utils:
         """
         if self._ldtp_debug:
             try:
-                print event, event.type, event.source, event.source.parent
+                print(event, event.type, event.source, event.source.parent)
             except:
                 # With at-spi2, sometimes noticed exception
                 # ignore exception, as we just use them for debugging
@@ -257,7 +258,7 @@ class Utils:
     def _on_window_event(self, event):
         if self._ldtp_debug:
             try:
-                print event, event.type, event.source, event.source.parent
+                print(event, event.type, event.source, event.source.parent)
             except:
                 # With at-spi2, sometimes noticed exception
                 # ignore exception, as we just use them for debugging
@@ -271,9 +272,9 @@ class Utils:
                     event.source)
                 # LDTPized name
                 try:
-                    win_name = u'%s%s' % (abbrev_role, abbrev_name)
+                    win_name = '%s%s' % (abbrev_role, abbrev_name)
                 except UnicodeDecodeError:
-                    win_name = u'%s%s' % (abbrev_role, abbrev_name.decode('utf-8'))
+                    win_name = '%s%s' % (abbrev_role, abbrev_name.decode('utf-8'))
                 # Window title is empty
                 if abbrev_name == '':
                     for win_name in self._appmap.keys():
@@ -314,7 +315,10 @@ class Utils:
                 self.cached_apps.append([event.host_application, True])
         except:
             if self._ldtp_debug:
-                print traceback.format_exc()
+                print(traceback.format_exc())
+            if self._ldtp_debug_file:
+                with open(self._ldtp_debug_file, "a") as fp:
+                    fp.write(traceback.format_exc())
 
     def _atspi2_workaround(self):
         if not hasattr(pyatspi, 'Accessible'):
@@ -361,6 +365,10 @@ class Utils:
             except LookupError:
                 # If the window doesn't exist, remove from the cached list
                 self.cached_apps.remove(app)
+            except:
+                # In at-spi2 gi._glib.GError exception is thrown
+                # If the window doesn't exist, remove from the cached list
+                self.cached_apps.remove(app)
 
     def _ldtpize_accessible(self, acc):
         """
@@ -398,7 +406,10 @@ class Utils:
                         # exceptions.AttributeError: 'NoneType' object has no attribute '_narrow'
                         # Let us not throw exception, instead continue
                         if self._ldtp_debug:
-                            print traceback.format_exc()
+                            print(traceback.format_exc())
+                        if self._ldtp_debug_file:
+                            with open(self._ldtp_debug_file, "a") as fp:
+                                fp.write(traceback.format_exc())
                         continue
         try:
             role = acc.getRole()
@@ -474,7 +485,7 @@ class Utils:
                 return 0
             if acc.name:
                 try:
-                    _acc_name=u"%s" % acc.name
+                    _acc_name="%s" % acc.name
                 except UnicodeDecodeError:
                     _acc_name=acc.name.decode('utf-8')
             if acc.name and re.match(fnmatch.translate(name), _acc_name, re.M | re.U):
@@ -490,10 +501,10 @@ class Utils:
         # ex: 'frmUnsavedDocument1-gedit' for Gedit application
         # frm - Frame, Window title - 'Unsaved Document 1 - gedit'
         try:
-           _object_name = u'%s%s' % (_ldtpize_accessible_name[0],
+           _object_name = '%s%s' % (_ldtpize_accessible_name[0],
                                      _ldtpize_accessible_name[1])
         except UnicodeDecodeError:
-           _object_name = u'%s%s' % (_ldtpize_accessible_name[0],
+           _object_name = '%s%s' % (_ldtpize_accessible_name[0],
                                      _ldtpize_accessible_name[1].decode('utf-8'))
         if self._glob_match(name, acc.name):
             # If given name match object name with regexp
@@ -554,7 +565,7 @@ class Utils:
         if self._glob_match(name, acc['label']):
             return 1
         # Strip space and look for object
-        obj_name = u'%s' % re.sub(' ', '', name)
+        obj_name = '%s' % re.sub(' ', '', name)
         role = acc['class']
         if role == 'frame' or role == 'dialog' or \
                 role == 'window' or \
@@ -638,7 +649,7 @@ class Utils:
             self.ldtpized_obj_index[abbrev_role] = 0
         if abbrev_name == '':
             ldtpized_name_base = abbrev_role
-            ldtpized_name = u'%s%d' % (ldtpized_name_base,
+            ldtpized_name = '%s%d' % (ldtpized_name_base,
                                       self.ldtpized_obj_index[abbrev_role])
         else:
             try:
@@ -649,7 +660,7 @@ class Utils:
         i = 0
         while ldtpized_name in self.ldtpized_list:
             i += 1
-            ldtpized_name = u'%s%d' % (ldtpized_name_base, i)
+            ldtpized_name = '%s%d' % (ldtpized_name_base, i)
         if parent in self.ldtpized_list:
             _current_children = self.ldtpized_list[parent]['children']
             if _current_children:
@@ -761,7 +772,7 @@ class Utils:
             raise LdtpServerException("Invalid menu hierarchy input")
         if not re.search('^mnu', _menu_hierarchy[0], re.M | re.U):
             # Add mnu to the first object, if it doesn't exist
-            _menu_hierarchy[0] = u'mnu%s' % _menu_hierarchy[0]
+            _menu_hierarchy[0] = 'mnu%s' % _menu_hierarchy[0]
         obj = self._get_object(window_name, _menu_hierarchy[0], wait)
         for _menu in _menu_hierarchy[1:]:
             _flag = False
@@ -788,7 +799,7 @@ class Utils:
         else:
             for i in xrange(iaction.nActions):
                 if self._ldtp_debug:
-                    print iaction.getName(i)
+                    print(iaction.getName(i))
                 if re.match(action, iaction.getName(i), re.I):
                     iaction.doAction(i)
                     return
@@ -869,16 +880,16 @@ class Utils:
                 tmp_name = obj_name[1]
             # Append window type and window title
             try:
-                w_name = name = u'%s%s' % (obj_name[0], tmp_name)
+                w_name = name = '%s%s' % (obj_name[0], tmp_name)
             except UnicodeDecodeError:
-                w_name = name = u'%s%s' % (obj_name[0], tmp_name.decode('utf-8'))
+                w_name = name = '%s%s' % (obj_name[0], tmp_name.decode('utf-8'))
             # If multiple window with same title, increment the index
             index = 1
             while name in window_list:
                 # If window name already exist in list, increase
                 # the index, so that we will have the window name
                 # always unique
-                name = u'%s%d' % (w_name, index)
+                name = '%s%d' % (w_name, index)
                 index += 1
             window_list.append(name)
 
@@ -887,26 +898,29 @@ class Utils:
 
             # Search with LDTP appmap format
             if window_name.find('#') != -1:
-                obj_index = u'%s#%d' % (gui.getApplication().name,
+                obj_index = '%s#%d' % (gui.getApplication().name,
                                        gui.getIndexInParent())
                 if self._ldtp_debug:
-                    print 'Window name has #', window_name, obj_index
+                    print('Window name has #', window_name, obj_index)
+                if self._ldtp_debug_file:
+                    with open(self._ldtp_debug_file, "a") as fp:
+                        fp.write('Window name has # %s %d', window_name, obj_index)
                 if window_name == obj_index:
                     if self._ldtp_debug:
-                        print 'Window found', gui, name
+                        print('Window found', gui, name)
                     return gui, name
             if window_name == name:
                 if self._ldtp_debug:
-                    print 'Window found', gui, name
+                    print('Window found', gui, name)
                 return gui, name
             if self._glob_match(window_name, name):
                 if self._ldtp_debug:
-                    print 'Window found', gui, name
+                    print('Window found', gui, name)
                 return gui, name
             if self._glob_match(re.sub(' ', '', window_name),
                                 re.sub(' ', '', name)):
                 if self._ldtp_debug:
-                    print 'Window found', gui, name
+                    print('Window found', gui, name)
                 return gui, name
         return None, None
 
@@ -989,16 +1003,16 @@ class Utils:
                         if obj.getRoleName() != _appmap_role:
                             # Traversing object role and appmap role doesn't match
                             if self._ldtp_debug:
-                                print "Traversing object role and appmap role " \
-                                      "doesn't match", obj.getRoleName(), _appmap_role
+                                print("Traversing object role and appmap role " \
+                                          "doesn't match", obj.getRoleName(), _appmap_role)
                             return None
                         break
                     obj = tmp_obj
                     if obj.getRoleName() != _appmap_role:
                         # Traversing object role and appmap role doesn't match
                         if self._ldtp_debug:
-                            print "Traversing object role and appmap role " \
-                                  "doesn't match", obj.getRoleName(), _appmap_role
+                            print("Traversing object role and appmap role " \
+                                      "doesn't match", obj.getRoleName(), _appmap_role)
                         return None
             return obj
         _current_obj = _self_get_object(window_name, obj_name, obj)

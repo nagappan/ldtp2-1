@@ -1,8 +1,9 @@
 ﻿/*
- * Cobra WinLDTP 3.5
+ * WinLDTP 1.0
  * 
  * Author: Nagappan Alagappan <nalagappan@vmware.com>
- * Copyright: Copyright (c) 2011-13 VMware, Inc. All Rights Reserved.
+ * Author: John Yingjun Li <yjli@vmware.com>
+ * Copyright: Copyright (c) 2011-12 VMware, Inc. All Rights Reserved.
  * License: MIT license
  * 
  * http://ldtp.freedesktop.org
@@ -26,18 +27,21 @@
  * SOFTWARE.
 */
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
+using System.Threading;
+using CookComputing.XmlRpc;
 
-namespace Ldtp
+using Ldtp;
+
+namespace TestLdtpClient
 {
-    [Serializable]
-    class LdtpExecutionError : Exception
+    class Program
     {
-        public LdtpExecutionError(string message)
-            : base(message)
+        static void Main(string[] args)
         {
+
+            Example1.Test();
+           
         }
     }
 }

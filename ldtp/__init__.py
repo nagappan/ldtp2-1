@@ -4,7 +4,7 @@ LDTP v2 client init file
 @author: Eitan Isaacson <eitan@ascender.com>
 @author: Nagappan Alagappan <nagappan@gmail.com>
 @copyright: Copyright (c) 2009 Eitan Isaacson
-@copyright: Copyright (c) 2009-12 Nagappan Alagappan
+@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 @license: LGPL
 
 http://ldtp.freedesktop.org
@@ -21,21 +21,29 @@ Headers in this file shall remain intact.
 
 import os
 import re
+import sys
 import time
-import state
-import client
 import atexit
 import socket
-import thread
 import logging
 import datetime
 import tempfile
 import warnings
+import threading
 import traceback
 from base64 import b64decode
 from fnmatch import translate as glob_trans
-from client_exception import LdtpExecutionError
 
+path=path = os.path.dirname(__file__)
+if path == "":
+   path = "."
+sys.path.append(path)
+
+from ldtp import state
+from ldtp import client
+from ldtp.client_exception import LdtpExecutionError
+
+_t = None
 _pollEvents = None
 _file_logger = None
 _ldtp_debug = client._ldtp_debug
@@ -97,7 +105,7 @@ def log(message, level = logging.DEBUG):
     """
 
     if _ldtp_debug:
-        print message
+        print(message)
     logger.log(level, str(message))
     return 1
 
@@ -128,7 +136,7 @@ def startlog(filename, overwrite = True):
     # Create logging file handler
     _file_logger = logging.FileHandler(os.path.expanduser(filename), _mode)
     # Log 'Levelname: Messages', eg: 'ERROR: Logged message'
-    _formatter = logging.Formatter(u'%(levelname)-8s: %(message)s')
+    _formatter = logging.Formatter('%(levelname)-8s: %(message)s')
     _file_logger.setFormatter(_formatter)
     logger.addHandler(_file_logger)
     if _ldtp_debug:
@@ -153,29 +161,43 @@ def stoplog():
         _file_logger = None
     return 1
 
-class PollLogs:
+class PollLogs(threading.Thread):
     """
     Class to poll logs, NOTE: *NOT* for external use
     """
     global _file_logger
     def __init__(self):
-        self._stop = False
+        super(PollLogs, self).__init__()
+        self.alive = True
 
     def __del__(self):
         """
         Stop polling when destroying this class
         """
-        self._stop = True
+        try:
+           self.alive = False
+        except:
+           pass
+
+    def stop(self):
+       """
+       Stop the thread
+       """
+       try:
+          self.alive = False
+          self.join()
+       except:
+          pass
 
     def run(self):
-        while not self._stop:
+        while self.alive:
             try:
                 if not self.poll_server():
                     # Socket error
                     break
             except:
                 log(traceback.format_exc())
-                self._stop = False
+                self.alive = False
                 break
 
     def poll_server(self):
@@ -232,30 +254,44 @@ def _populateNamespace(d):
         d[local_name] = getattr(client._client, method)
         d[local_name].__doc__ = client._client.system.methodHelp(method)
 
-class PollEvents:
+class PollEvents(threading.Thread):
     """
     Class to poll callback events, NOTE: *NOT* for external use
     """
     def __init__(self):
-        self._stop = False
-        # Initialize callback dictionary
-        self._callback = {}
+       super(PollEvents, self).__init__()
+       self.alive = True
+       # Initialize callback dictionary
+       self._callback = {}
 
     def __del__(self):
         """
-        Stop callback when destroying this class
+        Stop polling when destroying this class
         """
-        self._stop = True
+        try:
+           self.alive = False
+        except:
+           pass
+
+    def stop(self):
+       """
+       Stop the thread
+       """
+       try:
+          self.alive = False
+          self.join()
+       except:
+          pass
 
     def run(self):
-        while not self._stop:
+        while self.alive:
             try:
                 if not self.poll_server():
                     # Socket error
                     break
             except:
                 log(traceback.format_exc())
-                self._stop = False
+                self.alive = False
                 break
 
     def poll_server(self):
@@ -309,11 +345,12 @@ class PollEvents:
                     if len(args) and args[0]:
                         # Spawn a new thread, for each event
                         # If one or more arguments to the callback function
-                        thread.start_new_thread(callback, args)
+                        _t = threading.Thread(target=callback, args=args)
                     else:
                         # Spawn a new thread, for each event
                         # No arguments to the callback function
-                        thread.start_new_thread(callback, ())
+                        _t = threading.Thread(target=callback, args=())
+                    _t.start()
                 except:
                     # Log trace incase of exception
                     log(traceback.format_exc())
@@ -348,7 +385,7 @@ def imagecapture(window_name = None, out_file = None, x = 0, y = 0,
         out_file = tempfile.mktemp('.png', 'ldtp_')
     else:
         out_file = os.path.expanduser(out_file)
-        
+
     ### Windows compatibility
     if _ldtp_windows_env:
         if width == None:
@@ -383,6 +420,10 @@ def hasstate(window_name, object_name, state, guiTimeOut = 0):
     return _remote_hasstate(window_name, object_name, state, guiTimeOut)
 def selectrow(window_name, object_name, row_text):
     return _remote_selectrow(window_name, object_name, row_text, False)
+def multiselect(window_name, object_name, row_text):
+    return _remote_multiselect(window_name, object_name, row_text, False)
+def multiremove(window_name, object_name, row_text):
+    return _remote_multiremove(window_name, object_name, row_text, False)
 def doesrowexist(window_name, object_name, row_text, partial_match = False):
     return _remote_doesrowexist(window_name, object_name, row_text, partial_match)
 def getchild(window_name, child_name = '', role = '', parent = ''):
@@ -411,6 +452,12 @@ def getcellsize(window_name, object_name, row_index, column = 0):
     return _remote_getcellsize(window_name, object_name, row_index, column)
 def getobjectnameatcoords(waitTime = 0):
     return _remote_getobjectnameatcoords(waitTime)
+def maximizewindow(window_name = ''):
+    return _remote_maximizewindow(window_name)
+def minimizewindow(window_name = ''):
+    return _remote_minimizewindow(window_name)
+def closewindow(window_name = ''):
+    return _remote_closewindow(window_name)
 
 def onwindowcreate(window_name, fn_name, *args):
     """
@@ -462,7 +509,7 @@ def registerevent(event_name, fn_name, *args):
     @rtype: integer
     """
     if not isinstance(event_name, str):
-        raise ValueError, "event_name should be string"
+        raise ValueError("event_name should be string")
     _pollEvents._callback[event_name] = [event_name, fn_name, args]
     return _remote_registerevent(event_name)
 
@@ -497,7 +544,7 @@ def registerkbevent(keys, modifiers, fn_name, *args):
     @return: 1 if registration was successful, 0 if not.
     @rtype: integer
     """
-    event_name = u"kbevent%s%s" % (keys, modifiers)
+    event_name = "kbevent%s%s" % (keys, modifiers)
     _pollEvents._callback[event_name] = [event_name, fn_name, args]
     return _remote_registerkbevent(keys, modifiers)
 
@@ -513,8 +560,7 @@ def deregisterkbevent(keys, modifiers):
     @return: 1 if registration was successful, 0 if not.
     @rtype: integer
     """
-
-    event_name = u"kbevent%s%s" % (keys, modifiers)
+    event_name = "kbevent%s%s" % (keys, modifiers)
     if event_name in _pollEvents._callback:
         del _pollEvents._callback[event_name]
     return _remote_deregisterkbevent(keys, modifiers)
@@ -546,8 +592,18 @@ def windowuptime(window_name):
 
 _populateNamespace(globals())
 _pollEvents = PollEvents()
-thread.start_new_thread(_pollEvents.run, ())
+_pollEvents.daemon = True
+_pollEvents.start()
 _pollLogs = PollLogs()
-thread.start_new_thread(_pollLogs.run, ())
+_pollLogs.daemon = True
+_pollLogs.start()
+
+@atexit.register
+def _stop_thread():
+   try:
+      _pollLogs.stop()
+      _pollEvents.stop()
+   except:
+      pass
 
 atexit.register(client._client.kill_daemon)

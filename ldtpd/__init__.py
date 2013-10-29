@@ -68,6 +68,7 @@ def main(port=4118, parentpid=None):
     import traceback
 
     _ldtp_debug = os.environ.get('LDTP_DEBUG', None)
+    _ldtp_debug_file = os.environ.get('LDTP_DEBUG_FILE', None)
 
     try:
         pyatspi.setCacheLevel(pyatspi.CACHE_PROPERTIES)
@@ -79,7 +80,10 @@ def main(port=4118, parentpid=None):
         reactor.run()
     except twisted.internet.error.CannotListenError:
         if _ldtp_debug:
-            print traceback.format_exc()
+            print(traceback.format_exc())
     except socket.error:
         if _ldtp_debug:
-            print traceback.format_exc()
+            print(traceback.format_exc())
+        if _ldtp_debug_file:
+            with open(_ldtp_debug_file, "a") as fp:
+                fp.write(traceback.format_exc())

@@ -1,21 +1,25 @@
-"""
-LDTP v2 client
+# Copyright (c) 2013 Nagappan Alagappan All Rights Reserved.
 
-@author: Nagappan Alagappan <nagappan@gmail.com>
-@copyright: Copyright (c) 2009-13 Nagappan Alagappan
-@license: LGPL
+# This file is part of ATOMac.
 
-http://ldtp.freedesktop.org
+#@author: Nagappan Alagappan <nagappan@gmail.com>
+#@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 
-This file may be distributed and/or modified under the terms of the GNU Lesser General
-Public License version 2 as published by the Free Software Foundation. This file
-is distributed without any warranty; without even the implied warranty of 
-merchantability or fitness for a particular purpose.
+#http://ldtp.freedesktop.org
 
-See 'COPYING' in the source distribution for more information.
+# ATOMac is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by the Free
+# Software Foundation version 2 and no later version.
 
-Headers in this file shall remain intact.
-"""
+# ATOMac is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License version 2
+# for more details.
+
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# St, Fifth Floor, Boston, MA 02110-1301 USA.
+"""Python routines for LDTP"""
 
 ICONIFIED = "iconified"
 INVALID = "invalid"

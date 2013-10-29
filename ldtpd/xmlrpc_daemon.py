@@ -4,7 +4,7 @@ LDTP v2 xml rpc daemon.
 @author: Eitan Isaacson <eitan@ascender.com>
 @author: Nagappan Alagappan <nagappan@gmail.com>
 @copyright: Copyright (c) 2009 Eitan Isaacson
-@copyright: Copyright (c) 2009-12 Nagappan Alagappan
+@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 @license: LGPL
 
 http://ldtp.freedesktop.org
@@ -33,10 +33,8 @@ if 'LDTP_COMMAND_DELAY' in os.environ:
 else:
     delay = None
 
-if 'LDTP_DEBUG' in os.environ:
-    _ldtp_debug = os.environ['LDTP_DEBUG']
-else:
-    _ldtp_debug = None
+_ldtp_debug = os.environ.get('LDTP_DEBUG', None)
+_ldtp_debug_file = os.environ.get('LDTP_DEBUG_FILE', None)
 
 class XMLRPCLdtpd(Ldtpd, xmlrpc.XMLRPC, object):
     def __new__(cls, *args, **kwargs):
@@ -99,7 +97,7 @@ class XMLRPCLdtpd(Ldtpd, xmlrpc.XMLRPC, object):
                             time.sleep(0.5)
             else:
                 kwargs = {}
-        except Exception, e:
+        except Exception as e:
             f = xmlrpc.Fault(
                 self.FAILURE, "Can't deserialize input: %s" % (e,))
             self._cbRender(f, request)
@@ -110,17 +108,20 @@ class XMLRPCLdtpd(Ldtpd, xmlrpc.XMLRPC, object):
                    function = self.lookupProcedure(functionPath)
                 else:
                    function = self._getFunction(functionPath)
-            except xmlrpc.Fault, f:
+            except xmlrpc.Fault as f:
                 self._cbRender(f, request)
             else:
                 if _ldtp_debug:
-                    debug_st = u'%s(%s)' % \
+                    debug_st = '%s(%s)' % \
                         (functionPath,
                          ', '.join(map(repr, args) + \
                                        ['%s=%s' % (k, repr(v)) \
                                             for k, v in kwargs.items()]))
-                    print debug_st
+                    print(debug_st)
                     logger.debug(debug_st)
+                if _ldtp_debug_file:
+                    with open(_ldtp_debug_file, "a") as fp:
+                        fp.write(debug_st)
                 xmlrpc.defer.maybeDeferred(function, *args,
                                            **kwargs).\
                                            addErrback(self._ebRender).\

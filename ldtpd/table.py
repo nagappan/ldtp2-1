@@ -4,7 +4,7 @@ LDTP v2 Core Table.
 @author: Eitan Isaacson <eitan@ascender.com>
 @author: Nagappan Alagappan <nagappan@gmail.com>
 @copyright: Copyright (c) 2009 Eitan Isaacson
-@copyright: Copyright (c) 2009-12 Nagappan Alagappan
+@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 @license: LGPL
 
 http://ldtp.freedesktop.org
@@ -19,9 +19,11 @@ See 'COPYING' in the source distribution for more information.
 Headers in this file shall remain intact.
 """
 import re
+import time
 import pyatspi 
 from utils import Utils
 from server_exception import LdtpServerException
+from keypress_actions import KeyComboAction, KeyPressAction, KeyReleaseAction
 
 class Table(Utils):
     def getrowcount(self, window_name, object_name):
@@ -149,6 +151,166 @@ class Table(Utils):
                     return 1
         raise LdtpServerException('Unable to select row: %s' % row_text)
 
+    def multiselect(self, window_name, object_name, row_text_list,
+                    partial_match=False):
+        """
+        Select multiple row
+
+        @param window_name: Window name to type in, either full name,
+        LDTP's name convention, or a Unix glob.
+        @type window_name: string
+        @param object_name: Object name to type in, either full name,
+        LDTP's name convention, or a Unix glob. 
+        @type object_name: string
+        @param row_text_list: Row list with matching text to select
+        @type row_text: string
+
+        @return: 1 on success.
+        @rtype: integer
+        """
+        if partial_match:
+            return self.selectrowpartialmatch(window_name, object_name, row_text)
+        obj = self._get_object(window_name, object_name)
+        self._grab_focus(obj)
+
+        try:
+            tablei = obj.queryTable()
+        except NotImplementedError:
+            raise LdtpServerException('Object not table type.')
+
+        key_press_action=KeyPressAction(key_name="<ctrl>")
+        key_press_action()
+        try:
+            for row_text in row_text_list:
+                selected_rows = False
+                for i in range(0, tablei.nRows):
+                    for j in range(0, tablei.nColumns):
+                        cell = tablei.getAccessibleAt(i, j)
+                        if not cell:
+                            continue
+                        if cell.childCount > 0:
+                            flag = False
+                            try:
+                                if self._handle_table_cell:
+                                    # Was externally set, let us not
+                                    # touch this value
+                                    flag = True
+                                else:
+                                    self._handle_table_cell = True
+                                children = self._list_objects(cell)
+                                for child in children:
+                                    if self._match_name_to_acc(row_text, child):
+                                        time.sleep(1)
+                                        size = self._get_size(cell)
+                                        if pyatspi.state.STATE_SELECTED not \
+                                                in cell.getState().getStates():
+                                            self._mouse_event(size[0] + size[2]/2,
+                                                              size[1] + size[3]/2)
+                                        else:
+                                            # Table Cell already selected
+                                            pass
+                                        selected_rows = True
+                                        break
+                            finally:
+                                if not flag:
+                                    self._handle_table_cell = False
+                        elif self._match_name_to_acc(row_text, cell):
+                            time.sleep(1)
+                            size = self._get_size(cell)
+                            if pyatspi.state.STATE_SELECTED not \
+                                    in cell.getState().getStates():
+                                self._mouse_event(size[0] + size[2]/2,
+                                                  size[1] + size[3]/2)
+                            selected_rows = True
+                if not selected_rows:
+                    raise LdtpServerException('Unable to select row: %s' % row_text)
+        finally:
+            key_release_action=KeyReleaseAction(key_name="<ctrl>")
+            key_release_action()
+        if selected_rows:
+            return 1
+        raise LdtpServerException('Unable to select rows')
+
+    def multiremove(self, window_name, object_name, row_text_list,
+                    partial_match=False):
+        """
+        Remove multiple row
+
+        @param window_name: Window name to type in, either full name,
+        LDTP's name convention, or a Unix glob.
+        @type window_name: string
+        @param object_name: Object name to type in, either full name,
+        LDTP's name convention, or a Unix glob. 
+        @type object_name: string
+        @param row_text_list: Row list with matching text to select
+        @type row_text: string
+
+        @return: 1 on success.
+        @rtype: integer
+        """
+        if partial_match:
+            return self.selectrowpartialmatch(window_name, object_name, row_text)
+        obj = self._get_object(window_name, object_name)
+        self._grab_focus(obj)
+
+        try:
+            tablei = obj.queryTable()
+        except NotImplementedError:
+            raise LdtpServerException('Object not table type.')
+
+        key_press_action=KeyPressAction(key_name="<ctrl>")
+        key_press_action()
+        try:
+            for row_text in row_text_list:
+                unselected_rows = False
+                for i in range(0, tablei.nRows):
+                    for j in range(0, tablei.nColumns):
+                        cell = tablei.getAccessibleAt(i, j)
+                        if not cell:
+                            continue
+                        if cell.childCount > 0:
+                            flag = False
+                            try:
+                                if self._handle_table_cell:
+                                    # Was externally set, let us not
+                                    # touch this value
+                                    flag = True
+                                else:
+                                    self._handle_table_cell = True
+                                children = self._list_objects(cell)
+                                for child in children:
+                                    if self._match_name_to_acc(row_text, child):
+                                        time.sleep(1)
+                                        size = self._get_size(cell)
+                                        if pyatspi.state.STATE_SELECTED \
+                                                in cell.getState().getStates():
+                                            self._mouse_event(size[0] + size[2]/2,
+                                                              size[1] + size[3]/2)
+                                        else:
+                                            # Table Cell wasn't selected
+                                            pass
+                                        unselected_rows = True
+                                        break
+                            finally:
+                                if not flag:
+                                    self._handle_table_cell = False
+                        elif self._match_name_to_acc(row_text, cell):
+                            time.sleep(1)
+                            size = self._get_size(cell)
+                            if pyatspi.state.STATE_SELECTED \
+                                    in cell.getState().getStates():
+                                self._mouse_event(size[0] + size[2]/2,
+                                                  size[1] + size[3]/2)
+                            unselected_rows = True
+                if not unselected_rows:
+                    raise LdtpServerException('Unable to unselect row: %s' % row_text)
+        finally:
+            key_release_action=KeyReleaseAction(key_name="<ctrl>")
+            key_release_action()
+        if unselected_rows:
+            return 1
+        raise LdtpServerException('Unable to unselect rows')
+
     def selectrowindex(self, window_name, object_name, row_index):
         """
         Select row index
@@ -227,9 +389,7 @@ class Table(Utils):
         @rtype: integer
         """
         obj = self._get_object(window_name, object_name)
-
         cell = self._get_accessible_at_row_column(obj, row_index, column)
-        print cell
         name = None
         if cell.childCount > 0:
             flag = False
@@ -785,6 +945,45 @@ class Table(Utils):
                                       'b1d')
                     return i
         raise LdtpServerException('Unable to get row index: %s' % row_text)
+
+    def doubleclickrowindex(self, window_name, object_name, row_index, col_index=0):
+        """
+        Double click row matching given text
+
+        @param window_name: Window name to type in, either full name,
+        LDTP's name convention, or a Unix glob.
+        @type window_name: string
+        @param object_name: Object name to type in, either full name,
+        LDTP's name convention, or a Unix glob.
+        @type object_name: string
+        @param row_index: Row index to click
+        @type row_index: integer
+        @param col_index: Column index to click
+        @type col_index: integer
+
+        @return: row index matching the text on success.
+        @rtype: integer
+        """
+        obj = self._get_object(window_name, object_name)
+
+        try:
+            tablei = obj.queryTable()
+        except NotImplementedError:
+            raise LdtpServerException('Object not table type.')
+
+        if row_index < 0 or row_index > tablei.nRows:
+            raise LdtpServerException('Row index out of range: %d' % row_index)
+        try:
+            cell = tablei.getAccessibleAt(row_index, col_index)
+            self._grab_focus(cell)
+            size = self._get_size(cell)
+            self._mouse_event(size.x + size.width / 2,
+                              size.y + size.height / 2,
+                              'b1d')
+            return row_index
+        except:
+            raise LdtpServerException('Unable to access row index: %d column: %d' % \
+                                          row_index, col_index) 
 
     def verifytablecell(self, window_name, object_name, row_index,
                         column_index, row_text):

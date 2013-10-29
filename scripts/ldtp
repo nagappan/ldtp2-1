@@ -3,7 +3,7 @@
 LDTP v2 ldtp executable
 
 @author: Nagappan Alagappan <nagappan@gmail.com>
-@copyright: Copyright (c) 2009-12 Nagappan Alagappan
+@copyright: Copyright (c) 2009-13 Nagappan Alagappan
 @license: LGPL
 
 http://ldtp.freedesktop.org
@@ -32,11 +32,13 @@ def parse_cmd_line_option():
    parser.add_option("-v", "--verbose", dest = "verbose",
                      action = "store_true", help = "Verbose mode",
                      default = False)
+   parser.add_option("-p", "--port", dest = "port", type="int",
+                     help = "Port to listen", default = 4118)
 
    (options, args) = parser.parse_args()
    if options.version:
       # Print version info and exit
-      print 'ldtp-3.0.0'
+      print('ldtp-3.5.0')
       sys.exit(0)
    if options.verbose:
       # Set verbose flag
